@@ -1,36 +1,48 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-import "../StableVault.sol"; // Проверь путь, если файл в корне, то просто "../StableVault.sol"
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-// Фейковый токен для теста
-contract MockToken is ERC20 {
-    constructor() ERC20("Mock", "MCK") { _mint(msg.sender, 1000 ether); }
-}
+/**
+ * @title StableVault
+ * @author MarkAuditLab
+ * @notice Хранилище для обеспечения безопасности и доходности стейблкоинов.
+ * @dev Реализует стандарты безопасности OpenZeppelin для защиты активов.
+ */
+contract StableVault is ReentrancyGuard, Pausable, Ownable {
+    using SafeERC20 for IERC20;
 
-contract StableVaultTest is Test {
-    StableVault vault;
-    MockToken token;
-    address user = address(1);
+    IERC20 public immutable token;
 
-    function setUp() public {
-        token = new MockToken();
-        vault = new StableVault(address(token));
+    event Deposited(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+
+    /**
+     * @param _token Адрес ERC-20 токена, который будет храниться в хранилище.
+     */
+    constructor(address _token) {
+        token = IERC20(_token);
     }
 
-    function testDeposit() public {
-        vm.startPrank(user);
-        token.approve(address(vault), 100 ether);
-        vault.deposit(100 ether);
-        assertEq(token.balanceOf(address(vault)), 100 ether);
-        vm.stopPrank();
+    /**
+     * @notice Вносит активы в хранилище.
+     * @dev Использует nonReentrant для предотвращения атак повторного входа.
+     * @param amount Количество токенов для внесения.
+     */
+    function deposit(uint256 amount) external nonReentrant whenNotPaused {
+        require(amount > 0, "Amount must be > 0");
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        emit Deposited(msg.sender, amount);
     }
 
-    function testPauseFunctionality() public {
-        vault.pause();
-        vm.expectRevert(); // Ожидаем ошибку при попытке депозита
-        vault.deposit(100 ether);
+    /**
+     * @notice Останавливает все операции при угрозе безопасности.
+     */
+    function pause() external onlyOwner {
+        _pause();
     }
 }
