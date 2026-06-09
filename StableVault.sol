@@ -12,12 +12,10 @@ contract StableVault is ReentrancyGuard, Pausable, Ownable {
     IERC20 public immutable asset;
 
     constructor(address _asset) Ownable(msg.sender) {
-        require(_asset != address(0), "Zero address");
         asset = IERC20(_asset);
     }
 
     function deposit(uint256 amount) external nonReentrant whenNotPaused {
-        require(amount > 0, "Amount > 0");
         asset.safeTransferFrom(msg.sender, address(this), amount);
     }
 }
