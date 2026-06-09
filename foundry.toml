@@ -2,7 +2,6 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-remappings = [
-    '@openzeppelin/=lib/openzeppelin-contracts/',
-    'forge-std/=lib/forge-std/src/'
-]
+
+[fuzz]
+runs = 1000
